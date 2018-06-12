@@ -3,6 +3,7 @@ package it.infn.mw.esaco;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -41,8 +42,6 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 
-import eu.emi.security.authn.x509.X509CertChainValidatorExt;
-import eu.emi.security.authn.x509.impl.SocketFactoryCreator;
 import it.infn.mw.esaco.exception.SSLContextInitializationError;
 import it.infn.mw.esaco.service.TimeProvider;
 import it.infn.mw.esaco.service.impl.IamDynamicServerConfigurationService;
@@ -115,21 +114,17 @@ public class EsacoConfiguration {
   }
 
   @Bean
-  public X509CertChainValidatorExt certificateValidator() {
-
-    return new CertificateValidatorBuilder().lazyAnchorsLoading(false)
-      .trustAnchorsDir(trustAnchorsDir)
-      .trustAnchorsUpdateInterval(trustAnchorsRefreshInterval)
-      .build();
-  }
-
-  @Bean
   public SSLContext sslContext() {
 
     try {
       SSLContext context = SSLContext.getInstance(tlsVersion);
 
-      X509TrustManager tm = SocketFactoryCreator.getSSLTrustManager(certificateValidator());
+      // NEVER use this in production !!
+      X509TrustManager tm = new X509TrustManager() {
+        public X509Certificate[] getAcceptedIssuers() { return null; }
+        public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+        public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+      }
       SecureRandom r = new SecureRandom();
       context.init(null, new TrustManager[] {tm}, r);
 
